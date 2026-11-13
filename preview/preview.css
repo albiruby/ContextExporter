@@ -1,0 +1,57 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  font: 13px/1.4 system-ui, sans-serif;
+  background: #f3f4f6;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #1e293b;
+  color: #e2e8f0;
+  flex: none;
+}
+
+#status {
+  flex: 1;
+  color: #94a3b8;
+}
+
+#printBtn {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font: 600 13px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#printBtn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+#printBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+#printBtn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+#frame {
+  flex: 1;
+  border: 0;
+  background: #fff;
+}

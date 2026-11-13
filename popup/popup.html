@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Context Exporter</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="head">
+    <div class="logo" aria-hidden="true"></div>
+    <div>
+      <h1>Context Exporter</h1>
+      <p id="siteStatus">Checking this page…</p>
+    </div>
+  </header>
+
+  <div class="actions">
+    <button data-format="doc" disabled>📄 Word (.doc)</button>
+    <button data-format="pdf" disabled>🖨️ PDF (print dialog)</button>
+    <button data-format="md" disabled>📝 Markdown (.md)</button>
+  </div>
+
+  <p id="status" class="status"></p>
+
+  <button id="diagnoseBtn" class="diag" title="Copies a DOM analysis to the clipboard, useful when detection fails">🩺 Copy diagnostics</button>
+
+  <footer class="foot">
+    <a href="https://github.com/albiruby/ContextExporter" target="_blank" rel="noopener">GitHub</a>
+    <span id="ver">local only</span>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
