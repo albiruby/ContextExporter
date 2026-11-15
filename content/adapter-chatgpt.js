@@ -33,6 +33,7 @@
   CE.adapters.chatgpt = {
     id: 'chatgpt',
     label: 'ChatGPT',
+    supportsRanges: true,
 
     match() {
       return /(^|\.)chatgpt\.com$/.test(location.hostname)
@@ -169,17 +170,21 @@
         if (role !== 'user' && role !== 'assistant') continue;
         if (msg.metadata && msg.metadata.is_visually_hidden_from_conversation) continue;
         const blocks = CE.mdtext.messageToBlocks(msg);
-        if (blocks.length) turns.push({ role, blocks });
+        const time = typeof msg.create_time === 'number' ? msg.create_time * 1000 : null;
+        if (blocks.length) turns.push({ role, blocks, time });
       }
       return turns;
     },
 
     // Current endpoint (Aug 2026): flat, paginated messages[] with page_info.
     // The first page carries the latest turns; older ones are pulled with
-    // /messages?before=<start_cursor> until has_previous_page clears.
-    async gatherFromMessages(id) {
-      const pages = [];
+    // /messages?before=<start_cursor> until has_previous_page clears. When a
+    // range is requested, pagination stops as soon as a page reaches back past
+    // its cutoff, which keeps a "Today" export to one or two requests.
+    async gatherFromMessages(id, since) {
+      const msgs = [];
       let before = null;
+      let title = '';
       for (let p = 0; p < 60; p++) {
         const base = p === 0
           ? `/backend-api/conversations/${id}`
@@ -188,20 +193,27 @@
           + (before ? '&before=' + encodeURIComponent(before) : '');
         const data = await this.apiGet(url);
         if (!data) return null;
-        pages.push(data);
+        if (p === 0) title = data.title || '';
+        if (Array.isArray(data.messages)) msgs.push(...data.messages);
         const pi = data.page_info;
+
+        if (since && Array.isArray(data.messages) && data.messages.length) {
+          let oldest = null;
+          data.messages.forEach((m) => {
+            const t = m && typeof m.create_time === 'number' ? m.create_time * 1000 : null;
+            if (t !== null && (oldest === null || t < oldest)) oldest = t;
+          });
+          if (oldest !== null && oldest < since) break;
+        }
+
         if (!pi || pi.has_previous_page !== true || !pi.start_cursor || pi.start_cursor === before) break;
         before = pi.start_cursor;
       }
-      const msgs = [];
-      pages.forEach((pg) => {
-        if (Array.isArray(pg.messages)) msgs.push(...pg.messages);
-      });
       if (!msgs.length) {
         this._apiNote = 'messages endpoint returned empty messages[]';
         return null;
       }
-      return { turns: this.turnsFromMessageList(msgs), title: pages[0].title || '' };
+      return { turns: this.turnsFromMessageList(msgs), title };
     },
 
     // Previous endpoint: mapping tree, still live on accounts that have not
@@ -229,7 +241,7 @@
       return { turns, title: data.title || '' };
     },
 
-    async gatherFromApi() {
+    async gatherFromApi(since) {
       const id = this.conversationId();
       if (!id) {
         this._apiNote = 'no conversation id in url';
@@ -237,7 +249,7 @@
       }
       const notes = [];
       const attempts = [
-        () => this.gatherFromMessages(id),
+        () => this.gatherFromMessages(id, since),
         () => this.gatherFromMapping(id),
       ];
       for (const fn of attempts) {
@@ -358,19 +370,28 @@
       };
     },
 
-    async gather(onProgress) {
+    async gather(onProgress, opts) {
+      const since = opts && typeof opts.since === 'number' ? opts.since : null;
       this._seen = new Set();
       this._apiNote = null;
       this._token = undefined;
       let doc = null;
       try {
-        doc = await this.gatherFromApi();
+        doc = await this.gatherFromApi(since);
       } catch (e) {
         this._apiNote = 'error: ' + (e && e.message ? e.message : e);
       }
       if (doc) {
         doc.exportedAt = CE.utils.today();
         return doc;
+      }
+
+      // A range needs message timestamps, which only the API provides. The
+      // scroll pass would collect the whole thread and still fail the filter,
+      // so stop before spending time on it.
+      if (since) {
+        throw new Error('date filter needs the site API, which is unavailable ('
+          + (this._apiNote || 'unknown') + '). Pick All time or reload the page');
       }
 
       // The DOM path is visible by nature: the site only mounts a turn when

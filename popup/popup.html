@@ -14,6 +14,12 @@
     </div>
   </header>
 
+  <label class="range" for="range">
+    <span>Range</span>
+    <select id="range"></select>
+  </label>
+  <p id="rangeHint" class="hint" hidden>Dates need message timestamps; Gemini does not expose them.</p>
+
   <div class="actions">
     <button data-format="doc" disabled>📄 Word (.doc)</button>
     <button data-format="pdf" disabled>🖨️ PDF (print dialog)</button>
@@ -29,6 +35,7 @@
     <span id="ver">local only</span>
   </footer>
 
+  <script src="../content/ranges.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

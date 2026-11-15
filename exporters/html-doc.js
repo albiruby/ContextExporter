@@ -79,7 +79,7 @@
       const esc = CE.utils.htmlEscape;
       const title = esc(doc.title);
       const head = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>${CSS}</style></head><body>`;
-      const meta = `<h1>${title}</h1><div class="meta">${esc(doc.label)} • ${esc(doc.exportedAt)} • <a href="${esc(doc.url)}">${esc(doc.url)}</a></div>`;
+      const meta = `<h1>${title}</h1><div class="meta">${esc(doc.label)} • ${esc(doc.exportedAt)}${doc.range ? ' • ' + esc(doc.range) : ''} • <a href="${esc(doc.url)}">${esc(doc.url)}</a></div>`;
       const body = doc.turns.map((t) =>
         `<div class="turn ${t.role}"><div class="role">${t.role === 'user' ? 'You' : esc(doc.label)}</div>`
         + `${renderBlocks(t.blocks, forWord)}</div>`

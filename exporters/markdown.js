@@ -168,7 +168,8 @@
     mime: 'text/markdown',
 
     build(doc) {
-      const L = [`# ${doc.title}`, '', `> Exported from ${doc.label} on ${doc.exportedAt}`, ''];
+      const L = [`# ${doc.title}`, '', `> Exported from ${doc.label} on ${doc.exportedAt}`
+        + `${doc.range ? ' · ' + doc.range : ''}`, ''];
       doc.turns.forEach((t) => {
         L.push('', '---', '', `## ${t.role === 'user' ? '👤 You' : '🤖 ' + doc.label}`, '');
         t.blocks.forEach((b) => {

@@ -29,6 +29,7 @@
   CE.adapters.claude = {
     id: 'claude',
     label: 'Claude',
+    supportsRanges: true,
 
     match() {
       return /(^|\.)claude\.ai$/.test(location.hostname);
@@ -132,7 +133,14 @@
       }
 
       const turns = [];
-      for (const msg of msgs) {
+      // The endpoint is normally chronological, but sorting on created_at
+      // makes the order explicit and keeps range filtering predictable.
+      const ordered = msgs.slice().sort((a, b) => {
+        const ta = a && a.created_at ? Date.parse(a.created_at) : 0;
+        const tb = b && b.created_at ? Date.parse(b.created_at) : 0;
+        return (Number.isFinite(ta) ? ta : 0) - (Number.isFinite(tb) ? tb : 0);
+      });
+      for (const msg of ordered) {
         if (!msg) continue;
         const role = msg.sender === 'human' ? 'user' : 'assistant';
         const blocks = [];
@@ -145,7 +153,10 @@
             html: '<p><em>Attachment: ' + names.map((n) => CE.utils.htmlEscape(n)).join(', ') + '</em></p>',
           });
         }
-        if (blocks.length) turns.push({ role, blocks });
+        if (blocks.length) {
+          const time = typeof msg.created_at === 'string' ? Date.parse(msg.created_at) : NaN;
+          turns.push({ role, blocks, time: Number.isFinite(time) ? time : null });
+        }
       }
       if (!turns.length) {
         this._apiNote = 'api ok but 0 usable messages';
@@ -259,7 +270,8 @@
       };
     },
 
-    async gather(onProgress) {
+    async gather(onProgress, opts) {
+      const since = opts && typeof opts.since === 'number' ? opts.since : null;
       this._org = undefined;
       this._apiNote = null;
       try {
@@ -278,6 +290,13 @@
         }
       } catch (e) {
         this._apiNote = 'error: ' + (e && e.message ? e.message : e);
+      }
+
+      // Same rule as ChatGPT: the scroll harvest has no timestamps, so a
+      // requested range cannot be honored and must fail before it runs.
+      if (since) {
+        throw new Error('date filter needs the site API, which is unavailable ('
+          + (this._apiNote || 'unknown') + '). Pick All time or reload the page');
       }
 
       const state = { seen: new Set(), items: [] };

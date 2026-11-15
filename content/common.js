@@ -76,6 +76,29 @@
   let toastEl = null;
   let toastTimer = null;
 
+  // The chosen range follows the user between the toolbar popup and the
+  // in-page menu; storage failures fall back to All time.
+  function loadRange() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get({ range: 'all' }, (o) => {
+          void chrome.runtime.lastError;
+          resolve((o && o.range) || 'all');
+        });
+      } catch (e) {
+        resolve('all');
+      }
+    });
+  }
+
+  function saveRange(id) {
+    try {
+      chrome.storage.local.set({ range: id });
+    } catch (e) {
+      // A blocked storage write only means the choice is not remembered.
+    }
+  }
+
   function mountUI(adapter) {
     if (document.getElementById(HOST_ID)) return;
     const host = document.createElement('div');
@@ -95,6 +118,16 @@
                 border-radius:12px; background:#1e293b; display:none;
                 box-shadow:0 8px 24px rgba(0,0,0,.35); }
         .menu.open { display:block; }
+        .range { display:flex; align-items:center; justify-content:space-between; gap:10px;
+                 padding:6px 10px 9px; border-bottom:1px solid #334155; margin-bottom:4px;
+                 color:#94a3b8; font:500 11px system-ui,sans-serif; }
+        .range select { flex:1; max-width:132px; padding:5px 6px; border:1px solid #334155;
+                 border-radius:6px; background:#0f172a; color:#e2e8f0;
+                 font:500 12px system-ui,sans-serif; cursor:pointer; }
+        .range select:disabled { opacity:.5; cursor:default; }
+        .range option { background:#0f172a; color:#e2e8f0; }
+        .hint { margin:0; padding:0 10px 8px; color:#94a3b8;
+                font:400 10.5px/1.35 system-ui,sans-serif; }
         .menu button { display:flex; width:100%; gap:8px; align-items:center; padding:9px 10px;
                border:0; border-radius:8px; background:transparent; color:#e2e8f0;
                font:500 13px system-ui,sans-serif; cursor:pointer; text-align:left; }
@@ -106,6 +139,11 @@
         .toast.show { opacity:1; transform:none; }
       </style>
       <div class="menu" role="menu">
+        <div class="range">
+          <label for="ce-range">Range</label>
+          <select id="ce-range"></select>
+        </div>
+        <p class="hint" hidden>Dates need message timestamps; this site does not expose them.</p>
         <button data-format="doc" role="menuitem">📄 Word (.doc)</button>
         <button data-format="pdf" role="menuitem">🖨️ PDF (print dialog)</button>
         <button data-format="md" role="menuitem">📝 Markdown (.md)</button>
@@ -117,11 +155,31 @@
     labelEl = shadow.querySelector('.label');
     menuEl = shadow.querySelector('.menu');
     toastEl = shadow.querySelector('.toast');
+
+    const rangeEl = shadow.querySelector('#ce-range');
+    const hintEl = shadow.querySelector('.hint');
+    CE.ranges.OPTIONS.forEach((o) => {
+      const opt = document.createElement('option');
+      opt.value = o.id;
+      opt.textContent = o.label;
+      rangeEl.appendChild(opt);
+    });
+    if (adapter.supportsRanges === false) {
+      rangeEl.disabled = true;
+      hintEl.hidden = false;
+    }
+    loadRange().then((id) => {
+      if (adapter.supportsRanges !== false && CE.ranges.OPTIONS.some((o) => o.id === id)) {
+        rangeEl.value = id;
+      }
+    });
+    rangeEl.addEventListener('change', () => saveRange(rangeEl.value));
+
     btnEl.addEventListener('click', () => menuEl.classList.toggle('open'));
     menuEl.querySelectorAll('button[data-format]').forEach((b) => {
       b.addEventListener('click', () => {
         menuEl.classList.remove('open');
-        CE.app.export(adapter, b.dataset.format);
+        CE.app.export(adapter, b.dataset.format, rangeEl.value);
       });
     });
     document.documentElement.appendChild(host);

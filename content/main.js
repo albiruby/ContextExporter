@@ -122,17 +122,38 @@
     return 'done (scroll fallback)';
   }
 
-  async function runExport(adapter, format) {
+  async function runExport(adapter, format, rangeId) {
     // Without a living service worker nothing downloads and no preview
     // opens, so fail loudly before doing any work.
     const bg = await CE.utils.send({ type: 'ping' });
     if (!bg || !bg.ok) {
       throw new Error('background service worker not responding; reload the extension and open its Errors');
     }
+    const range = CE.ranges.option(rangeId);
+    if (range.days && adapter.supportsRanges === false) {
+      throw new Error(adapter.label + ' does not expose message timestamps, so only All time can be exported');
+    }
+    const since = CE.ranges.sinceFor(range.id);
     CE.ui.overlay('⏳ Exporting: collecting conversation…');
     try {
-      const doc = await adapter.gather((n) => CE.ui.overlay(`⏳ Exporting: ${n} items collected…`));
+      const doc = await adapter.gather(
+        (n) => CE.ui.overlay(`⏳ Exporting: ${n} items collected…`),
+        { since }
+      );
       if (!doc.turns.length) throw new Error('no messages found on this page');
+
+      if (since !== null) {
+        const trimmed = CE.ranges.apply(doc.turns, range.id);
+        if (!trimmed) {
+          throw new Error('date filter needs message timestamps from the site API; this export has none. Pick All time or reload the page');
+        }
+        if (!trimmed.turns.length) {
+          throw new Error(`no messages in the selected range (${range.label}); pick a wider range`);
+        }
+        doc.turns = trimmed.turns;
+        doc.range = CE.ranges.describe(range.id, since);
+        doc.rangeTag = range.tag;
+      }
 
       CE.ui.overlay('⏳ Exporting: embedding images…');
       const kept = await embedImages(doc);
@@ -149,7 +170,8 @@
         if (!res || !res.ok) throw new Error('preview failed: ' + ((res && res.error) || 'no response'));
       } else {
         CE.ui.overlay(null);
-        const filename = `${doc.label} - ${CE.utils.safeFilename(doc.title)} - ${doc.exportedAt}.${exp.ext}`;
+        const filename = `${doc.label} - ${CE.utils.safeFilename(doc.title)} - ${doc.exportedAt}`
+          + `${doc.rangeTag ? ' - ' + doc.rangeTag : ''}.${exp.ext}`;
         const res = await CE.utils.send({ type: 'download', filename, mime: exp.mime, data: out });
         if (!res || !res.ok) throw new Error('download failed: ' + ((res && res.error) || 'no response'));
       }
@@ -160,7 +182,7 @@
   }
 
   CE.app = {
-    async export(adapter, format) {
+    async export(adapter, format, rangeId) {
       if (!adapter) return;
       if (state.busy) {
         CE.ui.toast('Another export is already running');
@@ -169,7 +191,7 @@
       state.busy = true;
       const label = FORMAT_LABEL[format] || 'Export';
       try {
-        const doc = await runExport(adapter, format);
+        const doc = await runExport(adapter, format, rangeId);
         let line = '✅ ' + label + ': ' + shortNote(doc && doc.note);
         if (doc && doc.keptImages) line += `, ${doc.keptImages} img kept as link`;
         CE.ui.toast(line);
@@ -311,10 +333,14 @@
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (!msg || typeof msg !== 'object') return;
     if (msg.type === 'ping') {
-      sendResponse({ ok: true, ready: !!(state.adapter && state.adapter.ready()) });
+      sendResponse({
+        ok: true,
+        ready: !!(state.adapter && state.adapter.ready()),
+        ranges: !!(state.adapter && state.adapter.supportsRanges),
+      });
     } else if (msg.type === 'export') {
       sendResponse({ started: true });
-      CE.app.export(state.adapter, msg.format);
+      CE.app.export(state.adapter, msg.format, msg.range);
     } else if (msg.type === 'diagnose') {
       sendResponse({ data: diagnose() });
     }

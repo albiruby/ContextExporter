@@ -14,6 +14,7 @@ Everything runs locally in your browser: no account, no server, no tracking.
 - Exports the **entire conversation**, not just the visible messages:
   - **ChatGPT and Claude** read the conversation through the site's own API, so a long thread exports in about a second without scrolling. If those endpoints are unavailable, they fall back to harvesting the virtualized thread while scrolling.
   - **Gemini** drives its lazy history loader to the top while collecting every mounted window, then orders the turns.
+- **Filters by date**: All time, Today, last 3, 5, 7, 14, 21, or 30 calendar days. On ChatGPT and Claude the range is applied from real message timestamps, and the API stops paginating once it reaches the cutoff, so a "Today" export of a long thread stays fast. Gemini only offers All time (see Limitations).
 - Keeps **code blocks, tables, lists, quotes, and links** intact.
 - **Embeds images** into the file, so nothing breaks when the original CDN links expire. Thumbnails are downscaled to keep exports small.
 - Handles **math**: PDF shows it fully rendered (bundled KaTeX), Word gets a readable plain-math approximation, Markdown keeps the raw LaTeX.
@@ -86,8 +87,9 @@ Updates arrive the same way: download the new zip, unzip over the old folder, th
 
 1. Open any conversation on chatgpt.com, claude.ai, or gemini.google.com.
 2. Click the blue **Export chat** button in the bottom right corner (or use the extension popup).
-3. Choose Word, PDF, or Markdown.
-4. A full-screen overlay shows progress while the conversation is collected; the file downloads or the PDF preview opens when it is done.
+3. Pick a **range**: All time, Today, or one of the look-back windows. The choice is remembered for next time.
+4. Choose Word, PDF, or Markdown.
+5. A full-screen overlay shows progress while the conversation is collected; the file downloads or the PDF preview opens when it is done. The file name and the document header record the range when one was applied.
 
 ## How it works
 
@@ -98,6 +100,7 @@ Updates arrive the same way: download the new zip, unzip over the old folder, th
 
 ## Limitations
 
+- **Gemini date ranges**: Gemini does not expose per-message timestamps in the page, so only All time is available there. ChatGPT and Claude ranges come from their APIs; if those APIs are unreachable and the extension has to scroll, a range export stops with an error instead of silently exporting everything.
 - **Word images**: a `.doc` file is HTML opened by Word, and Word does not render base64 images. Embedded images may not appear in Word (PDF and Markdown show them fine). A real `.docx` writer with media files is on the roadmap.
 - **Link-card icons and unknown CDNs** stay as URLs instead of being embedded. Only the chat sites and their own image CDNs are covered by host permissions.
 - **Claude artifacts** are not exported (only the conversation text).

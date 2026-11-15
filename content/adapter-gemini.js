@@ -23,6 +23,7 @@
   CE.adapters.gemini = {
     id: 'gemini',
     label: 'Gemini',
+    supportsRanges: false,
 
     match() {
       return location.hostname === 'gemini.google.com';
