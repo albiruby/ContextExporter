@@ -28,13 +28,13 @@ Everything runs locally in your browser: no account, no server, no tracking.
 
 ## Screenshots
 
-<img src="assets/screenshots/claude-export-menu.png" alt="Format menu opened from the floating button on Claude" width="720">
+<img src="assets/screenshots/claude-export-menu.png" alt="Format menu with the date range selector, opened from the floating button on Claude" width="720">
 
-*The floating **Export chat** button opens the format menu on any supported site.*
+*The floating **Export chat** button opens the menu. Pick a date range, then a format.*
 
 <img src="assets/screenshots/gemini-popup.png" alt="Toolbar popup on Gemini" width="720">
 
-*The toolbar popup detects the conversation and offers the same three formats.*
+*The toolbar popup detects the conversation and offers the same three formats. On Gemini the range stays on All time, because Gemini does not expose per-message timestamps.*
 
 <img src="assets/screenshots/chatgpt-exporting.png" alt="Export in progress on ChatGPT" width="720">
 
